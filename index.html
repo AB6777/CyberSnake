@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Cyber Snake AB Edition</title>
+    <style>
+        :root {
+            --neon-green: #39ff14;
+            --neon-pink: #ff00ff;
+            --cyber-blue: #00f2ff;
+            --bg-dark: #05050a;
+        }
+
+        body {
+            margin: 0;
+            background-color: var(--bg-dark);
+            color: white;
+            font-family: 'Courier New', Courier, monospace;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            overflow: hidden;
+            touch-action: none; /* Telefonda skroll bo'lmasligi uchun */
+        }
+
+        /* Tepasidagi Cyber Logo */
+        header {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 10px;
+            z-index: 10;
+        }
+
+        .cyber-logo {
+            width: 50px;
+            height: 50px;
+            border: 3px solid var(--cyber-blue);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+            font-size: 24px;
+            box-shadow: 0 0 15px var(--cyber-blue);
+            border-radius: 5px;
+            background: rgba(0, 242, 255, 0.1);
+            color: var(--cyber-blue);
+        }
+
+        .dev-name {
+            font-size: 1.2rem;
+            text-transform: uppercase;
+            letter-spacing: 3px;
+            text-shadow: 0 0 10px var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        /* O'yin maydoni */
+        #game-container {
+            position: relative;
+            border: 4px solid var(--cyber-blue);
+            box-shadow: 0 0 30px rgba(0, 242, 255, 0.3);
+            background: rgba(0, 0, 0, 0.8);
+            transform: perspective(1000px) rotateX(10deg);
+            transition: 0.3s;
+        }
+
+        canvas {
+            display: block;
+            image-rendering: pixelated; /* Pixel-art HD ko'rinishi uchun */
+        }
+
+        /* Score va Effect */
+        #score {
+            position: absolute;
+            top: -40px;
+            right: 0;
+            font-size: 20px;
+            color: var(--neon-green);
+        }
+
+        /* Glitch animatsiyasi */
+        @keyframes glitch {
+            0% { transform: translate(0); }
+            20% { transform: translate(-2px, 2px); }
+            40% { transform: translate(-2px, -2px); }
+            60% { transform: translate(2px, 2px); }
+            80% { transform: translate(2px, -2px); }
+            100% { transform: translate(0); }
+        }
+
+        .glitch-effect {
+            animation: glitch 0.2s linear infinite;
+        }
+
+        /* Telefon uchun sensor boshqaruv (faqat kichik ekranlarda chiqadi) */
+        .controls {
+            display: none;
+            grid-template-columns: repeat(3, 60px);
+            gap: 10px;
+            margin-top: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .controls { display: grid; }
+            #game-container { transform: none; width: 95vw; height: auto; }
+            .dev-name { font-size: 0.9rem; }
+        }
+
+        .btn {
+            width: 60px;
+            height: 60px;
+            background: rgba(255,255,255,0.1);
+            border: 2px solid var(--cyber-blue);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="cyber-logo">AB</div>
+        <div class="dev-name">Azimxon Baxtiyorov</div>
+    </header>
+
+    <div id="game-container">
+        <div id="score">SCORE: 0</div>
+        <canvas id="snakeGame"></canvas>
+    </div>
+
+    <!-- Mobil boshqaruv -->
+    <div class="controls">
+        <div></div><div class="btn" onclick="changeDir('up')">▲</div><div></div>
+        <div class="btn" onclick="changeDir('left')">◀</div>
+        <div class="btn" onclick="changeDir('down')">▼</div>
+        <div class="btn" onclick="changeDir('right')">▶</div>
+    </div>
+
+    <script>
+        const canvas = document.getElementById("snakeGame");
+        const ctx = canvas.getContext("2d");
+        const scoreElement = document.getElementById("score");
+        const container = document.getElementById("game-container");
+
+        // Ekran razmeriga moslash
+        const isMobile = window.innerWidth < 768;
+        const gridSize = isMobile ? 15 : 20;
+        canvas.width = isMobile ? window.innerWidth * 0.9 : 600;
+        canvas.height = isMobile ? 300 : 400;
+
+        let score = 0;
+        let snake = [{x: 10, y: 10}];
+        let food = {x: 5, y: 5};
+        let dx = 1, dy = 0;
+        let speed = 100;
+
+        function draw() {
+            // Fonni tozalash
+            ctx.fillStyle = "rgba(5, 5, 10, 0.3)"; // Quyruq izi qolishi uchun
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Ovqat (Neon effekt)
+            ctx.fillStyle = "#ff00ff";
+            ctx.shadowBlur = 15;
+            ctx.shadowColor = "#ff00ff";
+            ctx.fillRect(food.x * gridSize, food.y * gridSize, gridSize - 2, gridSize - 2);
+
+            // Ilon (Cyber Green)
+            snake.forEach((part, index) => {
+                ctx.fillStyle = index === 0 ? "#39ff14" : "#008000";
+                ctx.shadowBlur = index === 0 ? 20 : 0;
+                ctx.shadowColor = "#39ff14";
+                ctx.fillRect(part.x * gridSize, part.y * gridSize, gridSize - 2, gridSize - 2);
+            });
+
+            moveSnake();
+        }
+
+        function moveSnake() {
+            const head = {x: snake[0].x + dx, y: snake[0].y + dy};
+
+            // Devorga urilish (Chegarasiz o'yin)
+            if (head.x < 0) head.x = Math.floor(canvas.width / gridSize) - 1;
+            if (head.x >= canvas.width / gridSize) head.x = 0;
+            if (head.y < 0) head.y = Math.floor(canvas.height / gridSize) - 1;
+            if (head.y >= canvas.height / gridSize) head.y = 0;
+
+            snake.unshift(head);
+
+            // Ovqat yeyish
+            if (head.x === food.x && head.y === food.y) {
+                score += 10;
+                scoreElement.innerText = "SCORE: " + score;
+                placeFood();
+                triggerGlitch();
+            } else {
+                snake.pop();
+            }
+
+            // O'ziga urilish
+            for (let i = 1; i < snake.length; i++) {
+                if (head.x === snake[i].x && head.y === snake[i].y) restart();
+            }
+        }
+
+        function placeFood() {
+            food.x = Math.floor(Math.random() * (canvas.width / gridSize));
+            food.y = Math.floor(Math.random() * (canvas.height / gridSize));
+        }
+
+        function triggerGlitch() {
+            container.classList.add("glitch-effect");
+            setTimeout(() => container.classList.remove("glitch-effect"), 200);
+        }
+
+        function restart() {
+            snake = [{x: 10, y: 10}];
+            score = 0;
+            scoreElement.innerText = "SCORE: 0";
+            dx = 1; dy = 0;
+        }
+
+        // Boshqaruv (Klaviatura)
+        document.addEventListener("keydown", e => {
+            if (e.key === "ArrowUp" && dy === 0) { dx = 0; dy = -1; }
+            if (e.key === "ArrowDown" && dy === 0) { dx = 0; dy = 1; }
+            if (e.key === "ArrowLeft" && dx === 0) { dx = -1; dy = 0; }
+            if (e.key === "ArrowRight" && dx === 0) { dx = 1; dy = 0; }
+        });
+
+        // Boshqaruv (Mobil uchun funksiya)
+        function changeDir(dir) {
+            if (dir === 'up' && dy === 0) { dx = 0; dy = -1; }
+            if (dir === 'down' && dy === 0) { dx = 0; dy = 1; }
+            if (dir === 'left' && dx === 0) { dx = -1; dy = 0; }
+            if (dir === 'right' && dx === 0) { dx = 1; dy = 0; }
+        }
+
+        setInterval(draw, speed);
+    </script>
+</body>
+</html>
